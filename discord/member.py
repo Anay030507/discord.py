@@ -261,6 +261,7 @@ class Member(discord.abc.Messageable, _UserTag):
         'guild',
         'pending',
         'nick',
+        'communication_disabled_until',
         '_client_status',
         '_user',
         '_state',
@@ -291,6 +292,7 @@ class Member(discord.abc.Messageable, _UserTag):
         self.joined_at: Optional[datetime.datetime] = utils.parse_time(data.get('joined_at'))
         self.premium_since: Optional[datetime.datetime] = utils.parse_time(data.get('premium_since'))
         self._roles: utils.SnowflakeList = utils.SnowflakeList(map(int, data['roles']))
+        self.communication_disabled_until = utils.parse_time(data.get('communication_disabled_until'))
         self._client_status: Dict[Optional[str], str] = {None: 'offline'}
         self.activities: Tuple[ActivityTypes, ...] = tuple()
         self.nick: Optional[str] = data.get('nick', None)
@@ -378,6 +380,7 @@ class Member(discord.abc.Messageable, _UserTag):
 
         self.premium_since = utils.parse_time(data.get('premium_since'))
         self._roles = utils.SnowflakeList(map(int, data['roles']))
+        self.communication_disabled_until = utils.parse_time(data.get('communication_disabled_until'))
         self._avatar = data.get('avatar')
 
     def _presence_update(self, data: PartialPresenceUpdate, user: UserPayload) -> Optional[Tuple[User, User]]:
@@ -644,6 +647,7 @@ class Member(discord.abc.Messageable, _UserTag):
         roles: List[discord.abc.Snowflake] = MISSING,
         voice_channel: Optional[VocalGuildChannel] = MISSING,
         reason: Optional[str] = None,
+        timed_out_until: Optional[datetime.datetime] = MISSING
     ) -> Optional[Member]:
         """|coro|
 
@@ -746,6 +750,12 @@ class Member(discord.abc.Messageable, _UserTag):
 
         if roles is not MISSING:
             payload['roles'] = tuple(r.id for r in roles)
+        
+        if timed_out_until is not MISSING:
+            if timed_out_until is None:
+                payload["communication_disabled_until"] = None
+            else:
+                payload["communication_disabled_until"] = timed_out_until.isoformat()
 
         if payload:
             data = await http.edit_member(guild_id, self.id, reason=reason, **payload)
