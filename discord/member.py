@@ -816,6 +816,40 @@ class Member(discord.abc.Messageable, _UserTag):
         """
         await self.edit(voice_channel=channel, reason=reason)
 
+    async def timeout(
+        self, until: Optional[Union[datetime.timedelta, datetime.datetime]], /, *, reason: Optional[str] = None
+    ) -> None:
+        """|coro|
+        Applies a time out to a member until the specified date time or for the
+        given :class:`datetime.timedelta`.
+        You must have the :attr:`~Permissions.moderate_members` permission to
+        use this.
+        This raises the same exceptions as :meth:`edit`.
+        Parameters
+        -----------
+        until: Optional[Union[:class:`datetime.timedelta`, :class:`datetime.datetime`]]
+            If this is a :class:`datetime.timedelta` then it represents the amount of
+            time the member should be timed out for. If this is a :class:`datetime.datetime`
+            then it's when the member's timeout should expire. If ``None`` is passed then the
+            timeout is removed. Note that the API only allows for timeouts up to 28 days.
+        reason: Optional[:class:`str`]
+            The reason for doing this action. Shows up on the audit log.
+        Raises
+        -------
+        TypeError
+            The ``until`` parameter was the wrong type or the datetime was not timezone-aware.
+        """
+
+        if until is None:
+            timed_out_until = None
+        elif isinstance(until, datetime.timedelta):
+            timed_out_until = utils.utcnow() + until
+        elif isinstance(until, datetime.datetime):
+            timed_out_until = until
+        else:
+            raise TypeError(f'expected None, datetime.datetime, or datetime.timedelta not {until.__class__!r}')
+
+        await self.edit(timed_out_until=timed_out_until, reason=reason)
     async def add_roles(self, *roles: Snowflake, reason: Optional[str] = None, atomic: bool = True) -> None:
         r"""|coro|
 
@@ -916,3 +950,15 @@ class Member(discord.abc.Messageable, _UserTag):
             The role or ``None`` if not found in the member's roles.
         """
         return self.guild.get_role(role_id) if self._roles.has(role_id) else None
+    
+    def is_timed_out(self) -> bool:
+        """Returns whether this member is timed out.
+        .. versionadded:: 2.0
+        Returns
+        --------
+        :class:`bool`
+            ``True`` if the member is timed out. ``False`` otherwise.
+        """
+        if self.timed_out_until is not None:
+            return utils.utcnow() < self.timed_out_until
+        return False
