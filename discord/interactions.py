@@ -51,6 +51,7 @@ if TYPE_CHECKING:
         Interaction as InteractionPayload,
         InteractionData,
     )
+    from .client import Client
     from .guild import Guild
     from .state import ConnectionState
     from .file import File
@@ -112,6 +113,7 @@ class Interaction:
         'version',
         '_permissions',
         '_state',
+        '_client',
         '_session',
         '_original_message',
         '_cs_response',
@@ -121,6 +123,7 @@ class Interaction:
 
     def __init__(self, *, data: InteractionPayload, state: ConnectionState):
         self._state: ConnectionState = state
+        self._client: Client = state._get_client()
         self._session: ClientSession = state.http._HTTPClient__session
         self._original_message: Optional[InteractionMessage] = None
         self._from_data(data)
@@ -159,7 +162,13 @@ class Interaction:
                 self.user = User(state=self._state, data=data['user'])
             except KeyError:
                 pass
-
+    @property
+    def client(self) -> Client:
+        """:class:`Client`: The client that is handling this interaction.
+        Note that :class:`AutoShardedClient`, :class:`~.commands.Bot`, and
+        :class:`~.commands.AutoShardedBot` are all subclasses of client.
+        """
+        return self._client
     @property
     def guild(self) -> Optional[Guild]:
         """Optional[:class:`Guild`]: The guild the interaction was sent from."""
