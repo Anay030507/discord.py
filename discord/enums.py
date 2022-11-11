@@ -462,6 +462,7 @@ class UserFlags(Enum):
     verified_bot = 65536
     verified_bot_developer = 131072
     discord_certified_moderator = 262144
+    active_developer = 4194304
 
 
 class ActivityType(Enum):
