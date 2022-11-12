@@ -1627,14 +1627,13 @@ class Connectable(Protocol):
         timeout: float = 60.0,
         reconnect: bool = True,
         cls: Callable[[Client, Connectable], T] = VoiceClient,
+        self_deaf: bool = False,
+        self_mute: bool = False,
     ) -> T:
         """|coro|
-
-        Connects to voice and creates a :class:`VoiceClient` to establish
+        Connects to voice and creates a :class:`~discord.VoiceClient` to establish
         your connection to the voice server.
-
-        This requires :attr:`Intents.voice_states`.
-
+        This requires :attr:`~discord.Intents.voice_states`.
         Parameters
         -----------
         timeout: :class:`float`
@@ -1643,10 +1642,15 @@ class Connectable(Protocol):
             Whether the bot should automatically attempt
             a reconnect if a part of the handshake fails
             or the gateway goes down.
-        cls: Type[:class:`VoiceProtocol`]
+        cls: Type[:class:`~discord.VoiceProtocol`]
             A type that subclasses :class:`~discord.VoiceProtocol` to connect with.
             Defaults to :class:`~discord.VoiceClient`.
-
+        self_mute: :class:`bool`
+            Indicates if the client should be self-muted.
+            .. versionadded:: 2.0
+        self_deaf: :class:`bool`
+            Indicates if the client should be self-deafened.
+            .. versionadded:: 2.0
         Raises
         -------
         asyncio.TimeoutError
@@ -1655,7 +1659,6 @@ class Connectable(Protocol):
             You are already connected to a voice channel.
         ~discord.opus.OpusNotLoaded
             The opus library has not been loaded.
-
         Returns
         --------
         :class:`~discord.VoiceProtocol`
@@ -1669,7 +1672,7 @@ class Connectable(Protocol):
             raise ClientException('Already connected to a voice channel.')
 
         client = state._get_client()
-        voice = cls(client, self)
+        voice: T = cls(client, self)
 
         if not isinstance(voice, VoiceProtocol):
             raise TypeError('Type must meet VoiceProtocol abstract base class.')
@@ -1677,7 +1680,7 @@ class Connectable(Protocol):
         state._add_voice_client(key_id, voice)
 
         try:
-            await voice.connect(timeout=timeout, reconnect=reconnect)
+            await voice.connect(timeout=timeout, reconnect=reconnect, self_deaf=self_deaf, self_mute=self_mute)
         except asyncio.TimeoutError:
             try:
                 await voice.disconnect(force=True)

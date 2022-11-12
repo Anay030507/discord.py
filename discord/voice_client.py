@@ -145,26 +145,28 @@ class VoiceProtocol:
         """
         raise NotImplementedError
 
-    async def connect(self, *, timeout: float, reconnect: bool) -> None:
+    async def connect(self, *, timeout: float, reconnect: bool, self_deaf: bool = False, self_mute: bool = False) -> None:
         """|coro|
-
         An abstract method called when the client initiates the connection request.
-
         When a connection is requested initially, the library calls the constructor
         under ``__init__`` and then calls :meth:`connect`. If :meth:`connect` fails at
         some point then :meth:`disconnect` is called.
-
         Within this method, to start the voice connection flow it is recommended to
         use :meth:`Guild.change_voice_state` to start the flow. After which,
         :meth:`on_voice_server_update` and :meth:`on_voice_state_update` will be called.
         The order that these two are called is unspecified.
-
         Parameters
         ------------
         timeout: :class:`float`
             The timeout for the connection.
         reconnect: :class:`bool`
             Whether reconnection is expected.
+        self_mute: :class:`bool`
+            Indicates if the client should be self-muted.
+            .. versionadded:: 2.0
+        self_deaf: :class:`bool`
+            Indicates if the client should be self-deafened.
+            .. versionadded:: 2.0
         """
         raise NotImplementedError
 
@@ -331,8 +333,8 @@ class VoiceClient(VoiceProtocol):
 
         self._voice_server_complete.set()
 
-    async def voice_connect(self) -> None:
-        await self.channel.guild.change_voice_state(channel=self.channel)
+    async def voice_connect(self, self_deaf: bool = False, self_mute: bool = False) -> None:
+        await self.channel.guild.change_voice_state(channel=self.channel, self_deaf=self_deaf, self_mute=self_mute)
 
     async def voice_disconnect(self) -> None:
         _log.info('The voice handshake is being terminated for Channel ID %s (Guild ID %s)', self.channel.id, self.guild.id)
@@ -359,7 +361,7 @@ class VoiceClient(VoiceProtocol):
         self._connected.set()
         return ws
 
-    async def connect(self, *, reconnect: bool, timeout: float) ->None:
+    async def connect(self, *, reconnect: bool, timeout: float, self_deaf: bool = False, self_mute: bool = False) -> None:
         _log.info('Connecting to voice...')
         self.timeout = timeout
 
@@ -373,7 +375,7 @@ class VoiceClient(VoiceProtocol):
             ]
 
             # Start the connection flow
-            await self.voice_connect()
+            await self.voice_connect(self_deaf=self_deaf, self_mute=self_mute)
 
             try:
                 await utils.sane_wait_for(futures, timeout=timeout)
@@ -396,7 +398,7 @@ class VoiceClient(VoiceProtocol):
                     raise
 
         if self._runner is MISSING:
-            self._runner = self.loop.create_task(self.poll_voice_ws(reconnect))
+            self._runner = self.client.loop.create_task(self.poll_voice_ws(reconnect))
 
     async def potential_reconnect(self) -> bool:
         # Attempt to stop the player thread from playing early
